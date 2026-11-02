@@ -1,7 +1,18 @@
-import type { Catalog, Product } from "./catalog";
+import type { CatalogData, Product } from "./catalog";
 
 function product(
-  fields: Pick<Product, "id" | "name" | "brand" | "categoryId" | "price" | "stock" | "lowStockThreshold" | "description" | "details"> &
+  fields: Pick<
+    Product,
+    | "id"
+    | "name"
+    | "brand"
+    | "categoryId"
+    | "price"
+    | "stock"
+    | "lowStockThreshold"
+    | "description"
+    | "details"
+  > &
     Partial<Pick<Product, "featured">>,
   createdAt: number,
 ): Product {
@@ -14,16 +25,36 @@ function product(
   };
 }
 
-export function createSeedCatalog(): Catalog {
+export function createSeedCatalog(): CatalogData {
   const now = Date.now();
   return {
     categories: [
-      { id: "whisky", name: "Whisky", description: "Single malts, blends and bourbons" },
-      { id: "gin", name: "Gin", description: "London dry, pink and botanical gins" },
-      { id: "vodka", name: "Vodka", description: "Smooth, clean and ready to mix" },
+      {
+        id: "whisky",
+        name: "Whisky",
+        description: "Single malts, blends and bourbons",
+      },
+      {
+        id: "gin",
+        name: "Gin",
+        description: "London dry, pink and botanical gins",
+      },
+      {
+        id: "vodka",
+        name: "Vodka",
+        description: "Smooth, clean and ready to mix",
+      },
       { id: "rum", name: "Rum", description: "Spiced, dark and white rums" },
-      { id: "wine", name: "Wine", description: "Reds, whites, rosé and bubbles" },
-      { id: "beer-cider", name: "Beer & Cider", description: "Lagers, craft beers and ciders" },
+      {
+        id: "wine",
+        name: "Wine",
+        description: "Reds, whites, rosé and bubbles",
+      },
+      {
+        id: "beer-cider",
+        name: "Beer & Cider",
+        description: "Lagers, craft beers and ciders",
+      },
     ],
     products: [
       product(
@@ -35,7 +66,8 @@ export function createSeedCatalog(): Catalog {
           price: 589,
           stock: 14,
           lowStockThreshold: 4,
-          description: "Honeyed and oaky with a long finish. A good gift bottle for whisky lovers.",
+          description:
+            "Honeyed and oaky with a long finish. A good gift bottle for whisky lovers.",
           details: [
             { label: "ABV", value: "40%" },
             { label: "Volume", value: "750ml" },
@@ -54,7 +86,8 @@ export function createSeedCatalog(): Catalog {
           price: 349.99,
           stock: 22,
           lowStockThreshold: 6,
-          description: "Smooth, easy-drinking blend with notes of vanilla and toasted oak.",
+          description:
+            "Smooth, easy-drinking blend with notes of vanilla and toasted oak.",
           details: [
             { label: "ABV", value: "40%" },
             { label: "Volume", value: "750ml" },
@@ -73,7 +106,8 @@ export function createSeedCatalog(): Catalog {
           price: 429,
           stock: 3,
           lowStockThreshold: 4,
-          description: "Caramel and vanilla sweetness with a warm spice finish.",
+          description:
+            "Caramel and vanilla sweetness with a warm spice finish.",
           details: [
             { label: "ABV", value: "43%" },
             { label: "Volume", value: "750ml" },
@@ -91,7 +125,8 @@ export function createSeedCatalog(): Catalog {
           price: 279,
           stock: 30,
           lowStockThreshold: 6,
-          description: "Crisp juniper and citrus peel. Built for a classic gin and tonic.",
+          description:
+            "Crisp juniper and citrus peel. Built for a classic gin and tonic.",
           details: [
             { label: "ABV", value: "43%" },
             { label: "Volume", value: "750ml" },
@@ -110,7 +145,8 @@ export function createSeedCatalog(): Catalog {
           price: 259,
           stock: 0,
           lowStockThreshold: 5,
-          description: "Bright grapefruit and rhubarb notes with a soft pink finish.",
+          description:
+            "Bright grapefruit and rhubarb notes with a soft pink finish.",
           details: [
             { label: "ABV", value: "37.5%" },
             { label: "Volume", value: "750ml" },
@@ -127,7 +163,8 @@ export function createSeedCatalog(): Catalog {
           price: 219,
           stock: 40,
           lowStockThreshold: 8,
-          description: "Triple-filtered and clean on the palate. Mixes well with everything.",
+          description:
+            "Triple-filtered and clean on the palate. Mixes well with everything.",
           details: [
             { label: "ABV", value: "40%" },
             { label: "Volume", value: "750ml" },
@@ -144,7 +181,8 @@ export function createSeedCatalog(): Catalog {
           price: 239,
           stock: 18,
           lowStockThreshold: 5,
-          description: "Vanilla, cinnamon and dried fruit. Excellent with cola or ginger beer.",
+          description:
+            "Vanilla, cinnamon and dried fruit. Excellent with cola or ginger beer.",
           details: [
             { label: "ABV", value: "35%" },
             { label: "Volume", value: "750ml" },
@@ -197,7 +235,8 @@ export function createSeedCatalog(): Catalog {
           price: 149,
           stock: 20,
           lowStockThreshold: 5,
-          description: "Fresh strawberry and red berry aromas with a lively bubble.",
+          description:
+            "Fresh strawberry and red berry aromas with a lively bubble.",
           details: [
             { label: "ABV", value: "11.5%" },
             { label: "Volume", value: "750ml" },
@@ -242,6 +281,5 @@ export function createSeedCatalog(): Catalog {
         now - 11000,
       ),
     ],
-    cart: [],
   };
 }

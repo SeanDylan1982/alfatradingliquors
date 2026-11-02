@@ -2,11 +2,12 @@ import { Minus, Plus } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { type Product, updateProduct } from "@/lib/catalog";
+import { showError } from "@/lib/errors";
 
 export function StockControl({ product }: { product: Product }) {
   const setStock = (stock: number) => {
     if (stock === product.stock) return;
-    updateProduct(product.id, { stock });
+    updateProduct(product.id, { stock }).catch(showError);
   };
 
   return (

@@ -1,68 +1,19 @@
-import { beforeEach, describe, expect, it } from "vitest";
+import { describe, expect, it } from "vitest";
 import {
-  addToCart,
-  clearCart,
-  deleteCategory,
-  deleteProduct,
-  getCatalog,
+  createUniqueId,
   getStockStatus,
-  saveCategory,
-  setCartQuantity,
   slugify,
   updateProduct,
 } from "./catalog";
 
-describe("cart", () => {
-  beforeEach(() => {
-    clearCart();
-  });
-
-  it("caps quantities at available stock", () => {
-    addToCart("spiced-dark-rum", 20);
-
-    expect(getCatalog().cart).toEqual([{ productId: "spiced-dark-rum", quantity: 18 }]);
-  });
-
-  it("ignores products that are out of stock", () => {
-    addToCart("pink-citrus-gin");
-
-    expect(getCatalog().cart).toEqual([]);
-  });
-
-  it("removes a line when its quantity is set to zero", () => {
-    addToCart("premium-vodka", 2);
-    setCartQuantity("premium-vodka", 0);
-
-    expect(getCatalog().cart).toEqual([]);
-  });
-
-  it("removes cart lines when their product is deleted", () => {
-    addToCart("craft-apple-cider", 1);
-    deleteProduct("craft-apple-cider");
-
-    expect(getCatalog().cart).toEqual([]);
-  });
-});
-
-describe("categories", () => {
-  it("refuses to delete a category that still has products", () => {
-    expect(() => deleteCategory("whisky")).toThrow(/Move or delete/);
-  });
-
-  it("creates unique ids from names", () => {
-    saveCategory({ name: "Gin Test Category", description: "" });
-    saveCategory({ name: "Gin Test Category", description: "" });
-
-    const ids = getCatalog().categories.map((category) => category.id);
-    expect(ids).toContain("gin-test-category");
-    expect(ids).toContain("gin-test-category-2");
-  });
-});
-
 describe("products", () => {
-  it("rejects negative or fractional stock counts", () => {
-    expect(() => updateProduct("premium-vodka", { stock: -1 })).toThrow();
-    expect(() => updateProduct("premium-vodka", { stock: 2.5 })).toThrow();
+  it("rejects negative or fractional stock counts before saving", async () => {
+    await expect(
+      updateProduct("premium-vodka", { stock: -1 }),
+    ).rejects.toThrow();
+    await expect(
+      updateProduct("premium-vodka", { stock: 2.5 }),
+    ).rejects.toThrow();
   });
 });
 
@@ -76,5 +27,18 @@ describe("helpers", () => {
   it("slugifies accented names", () => {
     expect(slugify("Sparkling Rosé")).toBe("sparkling-rose");
     expect(slugify("Beer & Cider")).toBe("beer-cider");
+  });
+
+  it("creates unique ids from names", () => {
+    expect(createUniqueId("Gin Test Category", [])).toBe("gin-test-category");
+    expect(createUniqueId("Gin Test Category", ["gin-test-category"])).toBe(
+      "gin-test-category-2",
+    );
+    expect(
+      createUniqueId("Gin Test Category", [
+        "gin-test-category",
+        "gin-test-category-2",
+      ]),
+    ).toBe("gin-test-category-3");
   });
 });

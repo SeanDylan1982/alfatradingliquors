@@ -5,7 +5,8 @@ import { ConfirmDialog } from "@/components/ConfirmDialog";
 import { ProductImage } from "@/components/store/ProductImage";
 import { QuantityStepper } from "@/components/store/QuantityStepper";
 import { Button } from "@/components/ui/button";
-import { clearCart, setCartQuantity, useCatalog } from "@/lib/catalog";
+import { clearCart, setCartQuantity, useCart } from "@/lib/cart";
+import { useCatalog } from "@/lib/catalog";
 import { formatPrice } from "@/lib/format";
 import {
   buildEmailOrderUrl,
@@ -17,8 +18,12 @@ import {
 import { storeInfo } from "@/lib/store-info";
 
 export default function Cart() {
-  const { cart, products } = useCatalog();
-  const lines = useMemo(() => buildOrderLines(cart, products), [cart, products]);
+  const cart = useCart();
+  const { products } = useCatalog();
+  const lines = useMemo(
+    () => buildOrderLines(cart, products),
+    [cart, products],
+  );
 
   if (lines.length === 0) {
     return (
@@ -27,7 +32,9 @@ export default function Cart() {
           <ShoppingBag className="size-7" />
         </span>
         <h1 className="mt-6 font-serif text-4xl">Your cart is empty</h1>
-        <p className="mt-3 text-muted-foreground">Browse the range and add bottles you'd like to order.</p>
+        <p className="mt-3 text-muted-foreground">
+          Browse the range and add bottles you'd like to order.
+        </p>
         <Button asChild size="lg" className="mt-8">
           <Link to="/shop">Browse the shop</Link>
         </Button>
@@ -49,9 +56,12 @@ export default function Cart() {
         <p className="mt-6 font-serif text-xl">Order summary</p>
       </div>
 
-      <h1 className="font-serif text-4xl sm:text-5xl print:hidden">Your cart</h1>
+      <h1 className="font-serif text-4xl sm:text-5xl print:hidden">
+        Your cart
+      </h1>
       <p className="mt-3 text-muted-foreground print:hidden">
-        {itemCount} {itemCount === 1 ? "item" : "items"} ready to send to the shop.
+        {itemCount} {itemCount === 1 ? "item" : "items"} ready to send to the
+        shop.
       </p>
 
       <div className="mt-10 grid gap-10 lg:grid-cols-[1fr_380px] print:block">
@@ -68,17 +78,25 @@ export default function Cart() {
               <div className="flex min-w-0 flex-1 flex-col">
                 <div className="flex justify-between gap-4">
                   <div className="min-w-0">
-                    <Link to={`/products/${product.id}`} className="font-serif text-xl leading-snug hover:underline">
+                    <Link
+                      to={`/products/${product.id}`}
+                      className="font-serif text-xl leading-snug hover:underline"
+                    >
                       {product.name}
                     </Link>
-                    <p className="mt-1 text-sm text-muted-foreground">{formatPrice(product.price)} each</p>
+                    <p className="mt-1 text-sm text-muted-foreground">
+                      {formatPrice(product.price)} each
+                    </p>
                   </div>
-                  <p className="shrink-0 font-semibold">{formatPrice(lineTotal)}</p>
+                  <p className="shrink-0 font-semibold">
+                    {formatPrice(lineTotal)}
+                  </p>
                 </div>
 
                 {quantity > product.stock && (
                   <p className="mt-2 text-sm text-destructive">
-                    Only {product.stock} left in stock. Please lower the quantity.
+                    Only {product.stock} left in stock. Please lower the
+                    quantity.
                   </p>
                 )}
 
@@ -87,16 +105,18 @@ export default function Cart() {
                     <QuantityStepper
                       value={quantity}
                       max={product.stock}
-                      onChange={(value) => setCartQuantity(product.id, value)}
+                      onChange={(value) => setCartQuantity(product, value)}
                     />
                   </div>
-                  <span className="hidden text-sm print:inline">Qty: {quantity}</span>
+                  <span className="hidden text-sm print:inline">
+                    Qty: {quantity}
+                  </span>
                   <Button
                     type="button"
                     variant="ghost"
                     size="sm"
                     className="text-muted-foreground hover:text-destructive print:hidden"
-                    onClick={() => setCartQuantity(product.id, 0)}
+                    onClick={() => setCartQuantity(product, 0)}
                   >
                     <Trash2 />
                     Remove
@@ -122,7 +142,11 @@ export default function Cart() {
 
           <div className="mt-8 grid gap-3 print:hidden">
             <Button asChild size="lg">
-              <a href={buildWhatsAppOrderUrl(orderText)} target="_blank" rel="noopener noreferrer">
+              <a
+                href={buildWhatsAppOrderUrl(orderText)}
+                target="_blank"
+                rel="noopener noreferrer"
+              >
                 <Send />
                 Send order
               </a>
@@ -133,13 +157,22 @@ export default function Cart() {
                 Email order
               </a>
             </Button>
-            <Button type="button" variant="outline" size="lg" onClick={() => window.print()}>
+            <Button
+              type="button"
+              variant="outline"
+              size="lg"
+              onClick={() => window.print()}
+            >
               <Printer />
               Print order
             </Button>
             <ConfirmDialog
               trigger={
-                <Button type="button" variant="ghost" className="text-destructive hover:text-destructive">
+                <Button
+                  type="button"
+                  variant="ghost"
+                  className="text-destructive hover:text-destructive"
+                >
                   <Eraser />
                   Clear cart
                 </Button>
@@ -152,8 +185,9 @@ export default function Cart() {
           </div>
 
           <p className="mt-6 text-xs leading-relaxed text-muted-foreground print:hidden">
-            Send opens WhatsApp with your order filled in. Email opens your mail app. The shop will confirm
-            availability and payment with you. Strictly 18 or older.
+            Send opens WhatsApp with your order filled in. Email opens your mail
+            app. The shop will confirm availability and payment with you.
+            Strictly 18 or older.
           </p>
         </aside>
       </div>

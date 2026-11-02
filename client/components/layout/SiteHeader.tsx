@@ -2,6 +2,7 @@ import { useState } from "react";
 import { Link, NavLink } from "react-router-dom";
 import { Menu, ShoppingBag, Wine, X } from "lucide-react";
 import { Button } from "@/components/ui/button";
+import { useCart } from "@/lib/cart";
 import { type Category, useCatalog } from "@/lib/catalog";
 import { cn } from "@/lib/utils";
 
@@ -12,7 +13,8 @@ const navLinkClass = ({ isActive }: { isActive: boolean }) =>
   );
 
 export function SiteHeader() {
-  const { cart, categories } = useCatalog();
+  const cart = useCart();
+  const { categories } = useCatalog();
   const [menuOpen, setMenuOpen] = useState(false);
   const itemCount = cart.reduce((total, line) => total + line.quantity, 0);
 
@@ -26,7 +28,9 @@ export function SiteHeader() {
             <Wine className="size-5" aria-hidden="true" />
           </span>
           <span className="leading-none">
-            <span className="block font-serif text-xl font-semibold tracking-tight">Alfa</span>
+            <span className="block font-serif text-xl font-semibold tracking-tight">
+              Alfa
+            </span>
             <span className="mt-1 block text-[0.6rem] font-semibold uppercase tracking-[0.24em] text-muted-foreground">
               Trading Liquors
             </span>
@@ -43,7 +47,11 @@ export function SiteHeader() {
         </nav>
 
         <div className="flex items-center gap-2">
-          <Button asChild variant="outline" className="relative h-10 rounded-full px-4">
+          <Button
+            asChild
+            variant="outline"
+            className="relative h-10 rounded-full px-4"
+          >
             <Link to="/cart" aria-label={`Cart, ${itemCount} items`}>
               <ShoppingBag />
               <span className="hidden sm:inline">Cart</span>
@@ -71,10 +79,18 @@ export function SiteHeader() {
       {menuOpen && (
         <nav className="border-t border-border/70 bg-background md:hidden">
           <div className="mx-auto grid max-w-7xl gap-1 px-4 py-4 sm:px-6">
-            <Link to="/" onClick={closeMenu} className="rounded-lg px-3 py-3 font-medium hover:bg-accent">
+            <Link
+              to="/"
+              onClick={closeMenu}
+              className="rounded-lg px-3 py-3 font-medium hover:bg-accent"
+            >
               Home
             </Link>
-            <Link to="/shop" onClick={closeMenu} className="rounded-lg px-3 py-3 font-medium hover:bg-accent">
+            <Link
+              to="/shop"
+              onClick={closeMenu}
+              className="rounded-lg px-3 py-3 font-medium hover:bg-accent"
+            >
               All products
             </Link>
             {categories.map((category: Category) => (

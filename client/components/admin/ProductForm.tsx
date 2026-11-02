@@ -1,5 +1,12 @@
 import { useState, type FormEvent, type ReactNode } from "react";
-import { ArrowLeft, ArrowRight, ImagePlus, Plus, Trash2, X } from "lucide-react";
+import {
+  ArrowLeft,
+  ArrowRight,
+  ImagePlus,
+  Plus,
+  Trash2,
+  X,
+} from "lucide-react";
 import { toast } from "sonner";
 import { Button } from "@/components/ui/button";
 import {
@@ -14,7 +21,12 @@ import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { Switch } from "@/components/ui/switch";
 import { Textarea } from "@/components/ui/textarea";
-import { type Product, type ProductDetail, saveProduct, useCatalog } from "@/lib/catalog";
+import {
+  type Product,
+  type ProductDetail,
+  saveProduct,
+  useCatalog,
+} from "@/lib/catalog";
 import { fileToDataUrl } from "@/lib/image";
 
 const selectClassName =
@@ -34,7 +46,10 @@ interface FormState {
   published: boolean;
 }
 
-function createInitialState(product: Product | undefined, defaultCategoryId: string): FormState {
+function createInitialState(
+  product: Product | undefined,
+  defaultCategoryId: string,
+): FormState {
   if (!product) {
     return {
       name: "",
@@ -73,21 +88,34 @@ function isHttpsUrl(value: string) {
   }
 }
 
-function ProductForm({ product, onSaved }: { product?: Product; onSaved: () => void }) {
+function ProductForm({
+  product,
+  onSaved,
+}: {
+  product?: Product;
+  onSaved: () => void;
+}) {
   const { categories } = useCatalog();
   const [form, setForm] = useState<FormState>(() =>
     createInitialState(product, categories[0]?.id ?? ""),
   );
   const [imageUrl, setImageUrl] = useState("");
   const [isReadingImages, setIsReadingImages] = useState(false);
+  const [isSaving, setIsSaving] = useState(false);
   const [error, setError] = useState<string | null>(null);
 
-  const updateField = <K extends keyof FormState>(key: K, value: FormState[K]) => {
+  const updateField = <K extends keyof FormState>(
+    key: K,
+    value: FormState[K],
+  ) => {
     setForm((current) => ({ ...current, [key]: value }));
   };
 
   const addImages = (urls: string[]) => {
-    setForm((current) => ({ ...current, images: [...current.images, ...urls] }));
+    setForm((current) => ({
+      ...current,
+      images: [...current.images, ...urls],
+    }));
   };
 
   const moveImage = (index: number, direction: -1 | 1) => {
@@ -114,7 +142,9 @@ function ProductForm({ product, onSaved }: { product?: Product; onSaved: () => v
     try {
       addImages(await Promise.all(files.map(fileToDataUrl)));
     } catch {
-      setError("One of those files could not be read. Use JPG, PNG, or WebP images.");
+      setError(
+        "One of those files could not be read. Use JPG, PNG, or WebP images.",
+      );
     } finally {
       setIsReadingImages(false);
     }
@@ -131,7 +161,11 @@ function ProductForm({ product, onSaved }: { product?: Product; onSaved: () => v
     setError(null);
   };
 
-  const updateDetail = (index: number, field: keyof ProductDetail, value: string) => {
+  const updateDetail = (
+    index: number,
+    field: keyof ProductDetail,
+    value: string,
+  ) => {
     setForm((current) => ({
       ...current,
       details: current.details.map((detail, detailIndex) =>
@@ -141,17 +175,22 @@ function ProductForm({ product, onSaved }: { product?: Product; onSaved: () => v
   };
 
   const addDetail = () => {
-    setForm((current) => ({ ...current, details: [...current.details, { label: "", value: "" }] }));
+    setForm((current) => ({
+      ...current,
+      details: [...current.details, { label: "", value: "" }],
+    }));
   };
 
   const removeDetail = (index: number) => {
     setForm((current) => ({
       ...current,
-      details: current.details.filter((_, detailIndex) => detailIndex !== index),
+      details: current.details.filter(
+        (_, detailIndex) => detailIndex !== index,
+      ),
     }));
   };
 
-  const handleSubmit = (event: FormEvent<HTMLFormElement>) => {
+  const handleSubmit = async (event: FormEvent<HTMLFormElement>) => {
     event.preventDefault();
     const price = Number(form.price);
     const stock = Number(form.stock);
@@ -162,7 +201,9 @@ function ProductForm({ product, onSaved }: { product?: Product; onSaved: () => v
       return;
     }
     if (!form.categoryId) {
-      setError("Choose a category. Add one under Categories first if you need to.");
+      setError(
+        "Choose a category. Add one under Categories first if you need to.",
+      );
       return;
     }
     if (form.price.trim() === "" || !Number.isFinite(price) || price < 0) {
@@ -178,8 +219,9 @@ function ProductForm({ product, onSaved }: { product?: Product; onSaved: () => v
       return;
     }
 
+    setIsSaving(true);
     try {
-      saveProduct({
+      await saveProduct({
         id: product?.id,
         name: form.name.trim(),
         brand: form.brand.trim(),
@@ -189,7 +231,10 @@ function ProductForm({ product, onSaved }: { product?: Product; onSaved: () => v
         lowStockThreshold,
         description: form.description.trim(),
         details: form.details
-          .map((detail) => ({ label: detail.label.trim(), value: detail.value.trim() }))
+          .map((detail) => ({
+            label: detail.label.trim(),
+            value: detail.value.trim(),
+          }))
           .filter((detail) => detail.label && detail.value),
         images: form.images,
         featured: form.featured,
@@ -198,7 +243,11 @@ function ProductForm({ product, onSaved }: { product?: Product; onSaved: () => v
       toast.success(product ? "Product updated" : "Product added");
       onSaved();
     } catch (err) {
-      setError(err instanceof Error ? err.message : "Could not save the product.");
+      setError(
+        err instanceof Error ? err.message : "Could not save the product.",
+      );
+    } finally {
+      setIsSaving(false);
     }
   };
 
@@ -232,7 +281,9 @@ function ProductForm({ product, onSaved }: { product?: Product; onSaved: () => v
             value={form.categoryId}
             onChange={(event) => updateField("categoryId", event.target.value)}
           >
-            {categories.length === 0 && <option value="">No categories yet</option>}
+            {categories.length === 0 && (
+              <option value="">No categories yet</option>
+            )}
             {categories.map((category) => (
               <option key={category.id} value={category.id}>
                 {category.name}
@@ -274,7 +325,9 @@ function ProductForm({ product, onSaved }: { product?: Product; onSaved: () => v
               min={0}
               step={1}
               value={form.lowStockThreshold}
-              onChange={(event) => updateField("lowStockThreshold", event.target.value)}
+              onChange={(event) =>
+                updateField("lowStockThreshold", event.target.value)
+              }
             />
           </div>
         </div>
@@ -316,7 +369,9 @@ function ProductForm({ product, onSaved }: { product?: Product; onSaved: () => v
         <div className="flex items-end justify-between gap-4">
           <div>
             <h3 className="font-semibold">Product details</h3>
-            <p className="text-xs text-muted-foreground">Shown on the product page, for example ABV, volume, or origin.</p>
+            <p className="text-xs text-muted-foreground">
+              Shown on the product page, for example ABV, volume, or origin.
+            </p>
           </div>
           <Button type="button" variant="outline" size="sm" onClick={addDetail}>
             <Plus />
@@ -329,13 +384,17 @@ function ProductForm({ product, onSaved }: { product?: Product; onSaved: () => v
               aria-label="Detail label"
               placeholder="Label, e.g. ABV"
               value={detail.label}
-              onChange={(event) => updateDetail(index, "label", event.target.value)}
+              onChange={(event) =>
+                updateDetail(index, "label", event.target.value)
+              }
             />
             <Input
               aria-label="Detail value"
               placeholder="Value, e.g. 40%"
               value={detail.value}
-              onChange={(event) => updateDetail(index, "value", event.target.value)}
+              onChange={(event) =>
+                updateDetail(index, "value", event.target.value)
+              }
             />
             <Button
               type="button"
@@ -354,15 +413,24 @@ function ProductForm({ product, onSaved }: { product?: Product; onSaved: () => v
         <div className="flex items-end justify-between gap-4">
           <div>
             <h3 className="font-semibold">Images</h3>
-            <p className="text-xs text-muted-foreground">The first image is the main photo. Add as many as you need.</p>
+            <p className="text-xs text-muted-foreground">
+              The first image is the main photo. Add as many as you need.
+            </p>
           </div>
         </div>
 
         {form.images.length > 0 && (
           <ul className="grid grid-cols-2 gap-3 sm:grid-cols-4">
             {form.images.map((src, index) => (
-              <li key={index} className="relative overflow-hidden rounded-lg border border-border bg-muted">
-                <img src={src} alt={`Product image ${index + 1}`} className="aspect-square w-full object-cover" />
+              <li
+                key={index}
+                className="relative overflow-hidden rounded-lg border border-border bg-muted"
+              >
+                <img
+                  src={src}
+                  alt={`Product image ${index + 1}`}
+                  className="aspect-square w-full object-cover"
+                />
                 {index === 0 && (
                   <span className="absolute left-2 top-2 rounded-full bg-primary px-2 py-0.5 text-[10px] font-semibold uppercase tracking-wider text-primary-foreground">
                     Main
@@ -439,7 +507,10 @@ function ProductForm({ product, onSaved }: { product?: Product; onSaved: () => v
       </section>
 
       {error && (
-        <p role="alert" className="rounded-lg bg-destructive/10 px-4 py-3 text-sm text-destructive">
+        <p
+          role="alert"
+          className="rounded-lg bg-destructive/10 px-4 py-3 text-sm text-destructive"
+        >
           {error}
         </p>
       )}
@@ -450,7 +521,7 @@ function ProductForm({ product, onSaved }: { product?: Product; onSaved: () => v
             Cancel
           </Button>
         </DialogClose>
-        <Button type="submit" disabled={isReadingImages}>
+        <Button type="submit" disabled={isReadingImages || isSaving}>
           {product ? "Save changes" : "Add product"}
         </Button>
       </div>
@@ -458,7 +529,13 @@ function ProductForm({ product, onSaved }: { product?: Product; onSaved: () => v
   );
 }
 
-export function ProductFormDialog({ product, trigger }: { product?: Product; trigger: ReactNode }) {
+export function ProductFormDialog({
+  product,
+  trigger,
+}: {
+  product?: Product;
+  trigger: ReactNode;
+}) {
   const [open, setOpen] = useState(false);
 
   return (
@@ -466,7 +543,9 @@ export function ProductFormDialog({ product, trigger }: { product?: Product; tri
       <DialogTrigger asChild>{trigger}</DialogTrigger>
       <DialogContent className="max-h-[90vh] overflow-y-auto sm:max-w-2xl">
         <DialogHeader>
-          <DialogTitle>{product ? `Edit ${product.name}` : "Add a product"}</DialogTitle>
+          <DialogTitle>
+            {product ? `Edit ${product.name}` : "Add a product"}
+          </DialogTitle>
         </DialogHeader>
         <ProductForm product={product} onSaved={() => setOpen(false)} />
       </DialogContent>

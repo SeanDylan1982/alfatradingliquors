@@ -1,6 +1,8 @@
 import { useSyncExternalStore } from "react";
 import { z } from "zod";
+import { describeError } from "./errors";
 import { createSeedCatalog } from "./seed";
+import { supabase } from "./supabase";
 
 const productDetailSchema = z.object({
   label: z.string(),
@@ -29,64 +31,58 @@ const productSchema = z.object({
   createdAt: z.number(),
 });
 
-const cartLineSchema = z.object({
-  productId: z.string(),
-  quantity: z.number().int().positive(),
-});
-
-const catalogSchema = z.object({
-  categories: z.array(categorySchema),
-  products: z.array(productSchema),
-  cart: z.array(cartLineSchema),
+const productRowSchema = z.object({
+  id: z.string(),
+  name: z.string(),
+  brand: z.string(),
+  category_id: z.string(),
+  price: z.coerce.number().nonnegative(),
+  stock: z.number().int().nonnegative(),
+  low_stock_threshold: z.number().int().nonnegative(),
+  description: z.string(),
+  details: z.array(productDetailSchema),
+  images: z.array(z.string()),
+  featured: z.boolean(),
+  published: z.boolean(),
+  created_at: z.string(),
 });
 
 export type ProductDetail = z.infer<typeof productDetailSchema>;
 export type Category = z.infer<typeof categorySchema>;
 export type Product = z.infer<typeof productSchema>;
-export type CartLine = z.infer<typeof cartLineSchema>;
-export type Catalog = z.infer<typeof catalogSchema>;
-
 export type ProductInput = Omit<Product, "id" | "createdAt"> & { id?: string };
 export type CategoryInput = Omit<Category, "id"> & { id?: string };
 
+export interface CatalogData {
+  categories: Category[];
+  products: Product[];
+}
+
+interface CatalogState extends CatalogData {
+  status: "loading" | "ready" | "error";
+  error: string | null;
+}
+
 export type StockStatus = "ok" | "low" | "out";
 
-export function getStockStatus(product: Pick<Product, "stock" | "lowStockThreshold">): StockStatus {
+export function getStockStatus(
+  product: Pick<Product, "stock" | "lowStockThreshold">,
+): StockStatus {
   if (product.stock === 0) return "out";
   if (product.stock <= product.lowStockThreshold) return "low";
   return "ok";
 }
 
-const STORAGE_KEY = "alfa-trading-liquors:catalog:v1";
-
-function readStoredCatalog(): Catalog {
-  const raw = typeof localStorage === "undefined" ? null : localStorage.getItem(STORAGE_KEY);
-  if (raw) {
-    try {
-      const parsed = catalogSchema.safeParse(JSON.parse(raw));
-      if (parsed.success) return parsed.data;
-    } catch {
-      return createSeedCatalog();
-    }
-  }
-  return createSeedCatalog();
-}
-
-let catalog: Catalog = readStoredCatalog();
+let state: CatalogState = {
+  categories: [],
+  products: [],
+  status: "loading",
+  error: null,
+};
 const listeners = new Set<() => void>();
 
-function persist(next: Catalog) {
-  if (typeof localStorage === "undefined") return;
-  try {
-    localStorage.setItem(STORAGE_KEY, JSON.stringify(next));
-  } catch {
-    throw new Error("Browser storage is full. Remove some product images and try again.");
-  }
-}
-
-function commit(next: Catalog) {
-  persist(next);
-  catalog = next;
+function setState(patch: Partial<CatalogState>) {
+  state = { ...state, ...patch };
   listeners.forEach((listener) => listener());
 }
 
@@ -97,20 +93,12 @@ function subscribe(listener: () => void) {
   };
 }
 
-export function getCatalog() {
-  return catalog;
-}
-
-if (typeof window !== "undefined") {
-  window.addEventListener("storage", (event) => {
-    if (event.key !== STORAGE_KEY) return;
-    catalog = readStoredCatalog();
-    listeners.forEach((listener) => listener());
-  });
+function getState() {
+  return state;
 }
 
 export function useCatalog() {
-  return useSyncExternalStore(subscribe, getCatalog, getCatalog);
+  return useSyncExternalStore(subscribe, getState, getState);
 }
 
 export function slugify(text: string) {
@@ -124,7 +112,7 @@ export function slugify(text: string) {
   );
 }
 
-function createUniqueId(name: string, takenIds: string[]) {
+export function createUniqueId(name: string, takenIds: string[]) {
   const base = slugify(name);
   let id = base;
   let suffix = 2;
@@ -135,94 +123,157 @@ function createUniqueId(name: string, takenIds: string[]) {
   return id;
 }
 
-export function saveCategory(input: CategoryInput) {
+function throwOnError(error: { message: string } | null) {
+  if (error) throw new Error(error.message);
+}
+
+function fromProductRow(row: z.infer<typeof productRowSchema>): Product {
+  return {
+    id: row.id,
+    name: row.name,
+    brand: row.brand,
+    categoryId: row.category_id,
+    price: row.price,
+    stock: row.stock,
+    lowStockThreshold: row.low_stock_threshold,
+    description: row.description,
+    details: row.details,
+    images: row.images,
+    featured: row.featured,
+    published: row.published,
+    createdAt: new Date(row.created_at).getTime(),
+  };
+}
+
+function toProductRow(input: ProductInput) {
+  return {
+    name: input.name,
+    brand: input.brand,
+    category_id: input.categoryId,
+    price: input.price,
+    stock: input.stock,
+    low_stock_threshold: input.lowStockThreshold,
+    description: input.description,
+    details: input.details,
+    images: input.images,
+    featured: input.featured,
+    published: input.published,
+  };
+}
+
+async function fetchCatalog(): Promise<CatalogData> {
+  const [categoriesResult, productsResult] = await Promise.all([
+    supabase.from("categories").select("id, name, description").order("name"),
+    supabase
+      .from("products")
+      .select("*")
+      .order("created_at", { ascending: false }),
+  ]);
+  throwOnError(categoriesResult.error);
+  throwOnError(productsResult.error);
+
+  return {
+    categories: z.array(categorySchema).parse(categoriesResult.data),
+    products: z
+      .array(productRowSchema)
+      .parse(productsResult.data)
+      .map(fromProductRow),
+  };
+}
+
+export async function refreshCatalog() {
+  setState({ ...(await fetchCatalog()), status: "ready", error: null });
+}
+
+export async function loadCatalog() {
+  try {
+    await refreshCatalog();
+  } catch (error) {
+    setState({ status: "error", error: describeError(error) });
+  }
+}
+
+export async function seedCatalog() {
+  const seed = createSeedCatalog();
+  throwOnError(
+    (await supabase.from("categories").upsert(seed.categories)).error,
+  );
+  throwOnError(
+    (
+      await supabase
+        .from("products")
+        .upsert(
+          seed.products.map((product) => ({
+            id: product.id,
+            ...toProductRow(product),
+          })),
+        )
+    ).error,
+  );
+  await refreshCatalog();
+}
+
+export async function saveCategory(input: CategoryInput) {
   const name = input.name.trim();
   const description = input.description.trim();
-  const existing = catalog.categories.find((category) => category.id === input.id);
-
-  if (existing) {
-    commit({
-      ...catalog,
-      categories: catalog.categories.map((category) =>
-        category.id === existing.id ? { ...category, name, description } : category,
-      ),
-    });
-    return;
-  }
-
-  const id = createUniqueId(name, catalog.categories.map((category) => category.id));
-  commit({
-    ...catalog,
-    categories: [...catalog.categories, { id, name, description }],
-  });
+  const result = input.id
+    ? await supabase
+        .from("categories")
+        .update({ name, description })
+        .eq("id", input.id)
+    : await supabase.from("categories").insert({
+        id: createUniqueId(
+          name,
+          state.categories.map((category) => category.id),
+        ),
+        name,
+        description,
+      });
+  throwOnError(result.error);
+  await refreshCatalog();
 }
 
-export function deleteCategory(id: string) {
-  if (catalog.products.some((product) => product.categoryId === id)) {
+export async function deleteCategory(id: string) {
+  if (state.products.some((product) => product.categoryId === id)) {
     throw new Error("Move or delete the products in this category first.");
   }
-  commit({
-    ...catalog,
-    categories: catalog.categories.filter((category) => category.id !== id),
-  });
+  throwOnError((await supabase.from("categories").delete().eq("id", id)).error);
+  await refreshCatalog();
 }
 
-export function saveProduct(input: ProductInput) {
-  const existing = catalog.products.find((product) => product.id === input.id);
-  const id = existing?.id ?? createUniqueId(input.name, catalog.products.map((product) => product.id));
-  const product: Product = {
-    ...input,
-    id,
-    createdAt: existing?.createdAt ?? Date.now(),
-  };
-
-  commit({
-    ...catalog,
-    products: existing
-      ? catalog.products.map((current) => (current.id === id ? product : current))
-      : [...catalog.products, product],
-  });
+export async function saveProduct(input: ProductInput) {
+  const existing = state.products.find((product) => product.id === input.id);
+  const row = toProductRow(input);
+  const result = existing
+    ? await supabase.from("products").update(row).eq("id", existing.id)
+    : await supabase.from("products").insert({
+        ...row,
+        id: createUniqueId(
+          input.name,
+          state.products.map((product) => product.id),
+        ),
+      });
+  throwOnError(result.error);
+  await refreshCatalog();
 }
 
-export function updateProduct(id: string, patch: Partial<Pick<Product, "stock" | "featured" | "published">>) {
-  if (patch.stock !== undefined && (!Number.isInteger(patch.stock) || patch.stock < 0)) {
+export async function updateProduct(
+  id: string,
+  patch: Partial<Pick<Product, "stock" | "featured" | "published">>,
+) {
+  if (
+    patch.stock !== undefined &&
+    (!Number.isInteger(patch.stock) || patch.stock < 0)
+  ) {
     throw new Error("Stock must be a whole number, 0 or more.");
   }
-  commit({
-    ...catalog,
-    products: catalog.products.map((product) => (product.id === id ? { ...product, ...patch } : product)),
-  });
+  throwOnError(
+    (await supabase.from("products").update(patch).eq("id", id)).error,
+  );
+  await refreshCatalog();
 }
 
-export function deleteProduct(id: string) {
-  commit({
-    ...catalog,
-    products: catalog.products.filter((product) => product.id !== id),
-    cart: catalog.cart.filter((line) => line.productId !== id),
-  });
-}
-
-export function setCartQuantity(productId: string, quantity: number) {
-  const product = catalog.products.find((current) => current.id === productId);
-  const next = Math.min(Math.floor(quantity), product?.stock ?? 0);
-  const exists = catalog.cart.some((line) => line.productId === productId);
-
-  let cart: CartLine[];
-  if (next <= 0) {
-    cart = catalog.cart.filter((line) => line.productId !== productId);
-  } else if (exists) {
-    cart = catalog.cart.map((line) => (line.productId === productId ? { ...line, quantity: next } : line));
-  } else {
-    cart = [...catalog.cart, { productId, quantity: next }];
-  }
-  commit({ ...catalog, cart });
-}
-
-export function addToCart(productId: string, quantity = 1) {
-  const current = catalog.cart.find((line) => line.productId === productId)?.quantity ?? 0;
-  setCartQuantity(productId, current + quantity);
-}
-
-export function clearCart() {
-  commit({ ...catalog, cart: [] });
+export async function deleteProduct(id: string) {
+  throwOnError((await supabase.from("products").delete().eq("id", id)).error);
+  await refreshCatalog();
 }

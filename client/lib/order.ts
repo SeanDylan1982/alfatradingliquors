@@ -1,4 +1,5 @@
-import type { CartLine, Product } from "./catalog";
+import type { CartLine } from "./cart";
+import type { Product } from "./catalog";
 import { formatPrice } from "./format";
 import { storeInfo } from "./store-info";
 
@@ -12,7 +13,10 @@ function roundCurrency(amount: number) {
   return Math.round(amount * 100) / 100;
 }
 
-export function buildOrderLines(cart: CartLine[], products: Product[]): OrderLine[] {
+export function buildOrderLines(
+  cart: CartLine[],
+  products: Product[],
+): OrderLine[] {
   return cart.flatMap((line) => {
     const product = products.find((current) => current.id === line.productId);
     if (!product) return [];
@@ -32,7 +36,8 @@ export function getOrderTotal(lines: OrderLine[]) {
 
 export function buildOrderText(lines: OrderLine[]) {
   const itemLines = lines.map(
-    (line) => `${line.quantity} x ${line.product.name} - ${formatPrice(line.lineTotal)}`,
+    (line) =>
+      `${line.quantity} x ${line.product.name} - ${formatPrice(line.lineTotal)}`,
   );
   return [
     "Hi Alfa Trading Liquors, I'd like to place this order:",

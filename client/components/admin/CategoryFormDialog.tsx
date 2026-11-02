@@ -13,21 +13,36 @@ import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { Textarea } from "@/components/ui/textarea";
 import { type Category, saveCategory } from "@/lib/catalog";
+import { describeError } from "@/lib/errors";
 
-function CategoryForm({ category, onSaved }: { category?: Category; onSaved: () => void }) {
+function CategoryForm({
+  category,
+  onSaved,
+}: {
+  category?: Category;
+  onSaved: () => void;
+}) {
   const [name, setName] = useState(category?.name ?? "");
   const [description, setDescription] = useState(category?.description ?? "");
+  const [isSaving, setIsSaving] = useState(false);
   const [error, setError] = useState<string | null>(null);
 
-  const handleSubmit = (event: FormEvent<HTMLFormElement>) => {
+  const handleSubmit = async (event: FormEvent<HTMLFormElement>) => {
     event.preventDefault();
     if (!name.trim()) {
       setError("Enter a category name.");
       return;
     }
-    saveCategory({ id: category?.id, name, description });
-    toast.success(category ? "Category updated" : "Category added");
-    onSaved();
+    setIsSaving(true);
+    try {
+      await saveCategory({ id: category?.id, name, description });
+      toast.success(category ? "Category updated" : "Category added");
+      onSaved();
+    } catch (err) {
+      setError(describeError(err));
+    } finally {
+      setIsSaving(false);
+    }
   };
 
   return (
@@ -53,7 +68,10 @@ function CategoryForm({ category, onSaved }: { category?: Category; onSaved: () 
       </div>
 
       {error && (
-        <p role="alert" className="rounded-lg bg-destructive/10 px-4 py-3 text-sm text-destructive">
+        <p
+          role="alert"
+          className="rounded-lg bg-destructive/10 px-4 py-3 text-sm text-destructive"
+        >
           {error}
         </p>
       )}
@@ -64,13 +82,21 @@ function CategoryForm({ category, onSaved }: { category?: Category; onSaved: () 
             Cancel
           </Button>
         </DialogClose>
-        <Button type="submit">{category ? "Save changes" : "Add category"}</Button>
+        <Button type="submit" disabled={isSaving}>
+          {category ? "Save changes" : "Add category"}
+        </Button>
       </div>
     </form>
   );
 }
 
-export function CategoryFormDialog({ category, trigger }: { category?: Category; trigger: ReactNode }) {
+export function CategoryFormDialog({
+  category,
+  trigger,
+}: {
+  category?: Category;
+  trigger: ReactNode;
+}) {
   const [open, setOpen] = useState(false);
 
   return (
@@ -78,7 +104,9 @@ export function CategoryFormDialog({ category, trigger }: { category?: Category;
       <DialogTrigger asChild>{trigger}</DialogTrigger>
       <DialogContent className="sm:max-w-lg">
         <DialogHeader>
-          <DialogTitle>{category ? `Edit ${category.name}` : "Add a category"}</DialogTitle>
+          <DialogTitle>
+            {category ? `Edit ${category.name}` : "Add a category"}
+          </DialogTitle>
         </DialogHeader>
         <CategoryForm category={category} onSaved={() => setOpen(false)} />
       </DialogContent>

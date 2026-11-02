@@ -1,6 +1,8 @@
 import { Link, NavLink, Outlet } from "react-router-dom";
-import { ArrowLeft, Wine } from "lucide-react";
+import { ArrowLeft, LogOut, Wine } from "lucide-react";
 import { Button } from "@/components/ui/button";
+import { showError } from "@/lib/errors";
+import { supabase } from "@/lib/supabase";
 import { cn } from "@/lib/utils";
 
 const adminLinks = [
@@ -15,7 +17,10 @@ export function AdminLayout() {
       <header className="sticky top-0 z-30 border-b border-border bg-card">
         <div className="mx-auto flex h-16 max-w-7xl items-center justify-between gap-4 px-4 sm:px-6 lg:px-8">
           <div className="flex min-w-0 items-center gap-6">
-            <Link to="/admin" className="flex shrink-0 items-center gap-2 font-serif text-lg font-semibold">
+            <Link
+              to="/admin"
+              className="flex shrink-0 items-center gap-2 font-serif text-lg font-semibold"
+            >
               <span className="grid size-8 place-items-center rounded-full bg-primary text-gold">
                 <Wine className="size-4" aria-hidden="true" />
               </span>
@@ -41,12 +46,25 @@ export function AdminLayout() {
               ))}
             </nav>
           </div>
-          <Button asChild variant="outline" size="sm" className="shrink-0">
-            <Link to="/">
-              <ArrowLeft />
-              View store
-            </Link>
-          </Button>
+          <div className="flex shrink-0 items-center gap-2">
+            <Button asChild variant="outline" size="sm">
+              <Link to="/">
+                <ArrowLeft />
+                View store
+              </Link>
+            </Button>
+            <Button
+              variant="ghost"
+              size="sm"
+              onClick={async () => {
+                const { error } = await supabase.auth.signOut();
+                if (error) showError(error);
+              }}
+            >
+              <LogOut />
+              Sign out
+            </Button>
+          </div>
         </div>
       </header>
 
