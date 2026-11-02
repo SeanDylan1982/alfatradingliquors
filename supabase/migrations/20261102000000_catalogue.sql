@@ -75,9 +75,9 @@ create table public.orders (
 
 alter table public.orders enable row level security;
 
-create policy "Anyone can place a new order"
+create policy "Admins create orders"
   on public.orders for insert
-  with check (status = 'new');
+  with check ((select public.is_admin()));
 
 create policy "Admins read orders"
   on public.orders for select
