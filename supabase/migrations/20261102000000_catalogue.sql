@@ -61,3 +61,33 @@ create policy "Admins manage products"
 create policy "Admins can read their own admin row"
   on public.admins for select
   using (user_id = (select auth.uid()));
+
+create table public.orders (
+  id uuid primary key default gen_random_uuid(),
+  created_at timestamptz not null default now(),
+  customer_name text not null default '',
+  customer_phone text not null default '',
+  customer_email text not null default '',
+  items jsonb not null check (jsonb_typeof(items) = 'array'),
+  total numeric(10, 2) not null check (total >= 0),
+  status text not null default 'new' check (status in ('new', 'confirmed', 'fulfilled', 'cancelled'))
+);
+
+alter table public.orders enable row level security;
+
+create policy "Anyone can place a new order"
+  on public.orders for insert
+  with check (status = 'new');
+
+create policy "Admins read orders"
+  on public.orders for select
+  using ((select public.is_admin()));
+
+create policy "Admins update orders"
+  on public.orders for update
+  using ((select public.is_admin()))
+  with check ((select public.is_admin()));
+
+create policy "Admins delete orders"
+  on public.orders for delete
+  using ((select public.is_admin()));
